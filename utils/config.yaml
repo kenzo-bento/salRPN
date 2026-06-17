@@ -1,0 +1,16 @@
+# config.yaml
+# describes file locations of annotations and images for reference.
+
+coco:
+  root: './datasets/coco'
+  train: 'images/train2017/'
+  ann_train: 'annotations/instances_train2017.json'
+  val: 'images/val2017/'
+  ann_val: 'annotations/instances_val2017.json'
+
+voc:
+  root: './datasets/voc'
+  train: 'VOC2012_train_val/JPEGImages'
+  ann_train: 'VOC2012_train_val/Annotations'
+  val: 'VOC2012_test/JPEGImages'
+  ann_val: 'VOC2012_test/Annotations'
