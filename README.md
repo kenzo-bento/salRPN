@@ -8,9 +8,8 @@ Over the past few decades, many saliency models have been developed in an attemp
 ## File structure:
 ```
 salRPN
-├── datasets                         # see download instructions below
-│   ├── coco
-│   └── voc
+├── datasets                         
+│   └── README.md                    # instructions regarding dataset download and saliency generation
 ├── LICENSE
 ├── main_command_line_inputs.py      # for use with sbatch script. will call `run_experiment.py`
 ├── main.py                          # will call `run_experiment.py`
@@ -22,7 +21,7 @@ salRPN
     ├── wrapper.py                   # functions to create custom RPN
     ├── run.py                       # runs the training and testing epochs
     ├── run_experiment.py            # function with many parameters options, to be called in `main.py`
-    ├── sal_utils.py
+    ├── sal_utils.py                 # code for image signature saliency map generation
     └── trainer.py                   # defines training and evaluation methods and calls wrapper classes to setup model
 ```
 
