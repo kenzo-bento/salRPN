@@ -25,6 +25,6 @@ salRPN
     └── trainer.py                   # defines training and evaluation methods and calls wrapper classes to setup model
 ```
 
-## Data download instructions
+## Wandb tracking:
 
-See https://github.com/shiragg1/saliency_map_gen for detailed instructions on downloading the datasets and generating saliency maps.
+Modify the code in salRPN/run.py to personalize wandb initialization, specifically the project-placeholder and entity-placeholder.
