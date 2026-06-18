@@ -9,8 +9,8 @@ def perform_run(trainerObj, base_model: nn.Module, es_params, wandb_params, repo
             
         # initialize wandb run with the current prune iteration and parameters
         wandb.init(
-            project="test_version_salRPN",
-            entity = "ksan2-johns-hopkins-university",
+            project="project-placeholder",
+            entity = "entity-placeholder",
             name=wandb_name,
             config={
                 "learning_rate": wandb_params['learning_rate'],
