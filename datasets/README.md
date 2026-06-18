@@ -1,2 +1,2 @@
-## Dataset download and Saliency generation instructions
+## Instructions for dataset download and saliency generation
 Dataset
