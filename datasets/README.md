@@ -23,11 +23,17 @@ datasets/
 ```
 
 ## Downloading MS COCO dataset:
-
+Navigate to the datasets directory, grant coco.sh execution permissions, and run the program.
+```bash
+cd ./datasets
+chmod +x coco.sh
+./coco.sh
+```
 
 ## Downloading PASCAL VOC dataset:
-
+The PASCAL VOC 2012 dataset can be found and downloaded via Kaggle here: https://www.kaggle.com/datasets/gopalbhattrai/pascal-voc-2012-dataset
 
 ## Saliency generation:
+Specify input and output folders that are noted in the runProtoObject.m file before running the matlab file on each dataset.
 
 
