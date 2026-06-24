@@ -28,3 +28,7 @@ salRPN
 ## Wandb tracking:
 
 Modify the code in salRPN/run.py to personalize wandb initialization, specifically the project-placeholder and entity-placeholder.
+
+## Running the experiment:
+
+Define parameters and run the experiment via a SLURM script. An example script, "example_script.slurm", has been provided.
