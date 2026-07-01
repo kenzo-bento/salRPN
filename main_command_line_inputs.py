@@ -34,7 +34,6 @@ def main():
     parser.add_argument('--report_wandb', action='store_true', default=True, help='Report to Weights & Biases')
     parser.add_argument('--save_model', action='store_true', default=True, help='Save the trained model')
     parser.add_argument('--save_stats', action='store_true', default=True, help='Save training statistics')
-    parser.add_argument('--save_f_maps', action='store_true', help='Save feature maps')
     parser.add_argument('--seed_val', type=int, default=42, help='Random seed')
     parser.add_argument('--dropout', type = float, default = 0.5, help = 'dropout rate')
 
@@ -63,7 +62,6 @@ def main():
                     report_wandb=args.report_wandb,
                     save_model=args.save_model,
                     save_stats=args.save_stats,
-                    save_f_maps=args.save_f_maps,
                     seed_val=args.seed_val,
                     k = args.dropout)
 if __name__ == '__main__':
