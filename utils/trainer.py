@@ -34,19 +34,16 @@ from tqdm import tqdm
 import copy
 import os
 from torch.optim.lr_scheduler import StepLR, ExponentialLR
-from utils.sal_utils import *
 
 config = load_config('./utils/config.yaml')
 
 class Trainer:
     def __init__(self, nn_model: nn.Module=None, nn_model_name=None, run_outputs_path=None, sal_model=None, report_wandb=None,
             device='cuda', batch_size: int=100, epochs: int=100, num_workers=1, optimizer_name=None, scheduler_name=None,
-                 dataset_name=None, save_model=None, save_stats=None, save_f_maps=None, nTrain=None, 
-                 nTest=None, learning_rate: float=1e-2, sal_type = 'batch', sal_method = 'maxima', k = 0.1, seed = 42, tau = 4, test_var=None, **kwargs):
+                 dataset_name=None, save_model=None, save_stats=None, nTrain=None, 
+                 nTest=None, learning_rate: float=1e-2, sal_type = 'batch', sal_method = 'maxima', k = 0.1, seed = 42, **kwargs):
         
         self.k = k # sparsity level
-        self.test_var = test_var
-        self.tau = tau # exponential dropout (Officially not used)
         self.seed = seed
         self.model = nn_model.to(device)
         self.sal_type = sal_type
@@ -62,7 +59,6 @@ class Trainer:
         self.dataset_name = dataset_name
         self.save_model = save_model
         self.save_stats = save_stats
-        self.save_f_maps = save_f_maps
         self.nTrain = nTrain
         self.nTest = nTest
         self.lr = learning_rate
@@ -76,7 +72,7 @@ class Trainer:
 
         self.data_module = DataModule(dataset_name=dataset_name, config=config, num_train=nTrain, 
                                 num_test=nTest, batch_size=batch_size, num_workers=num_workers, 
-                                sal_type = self.sal_type, saliency_model=sal_model, test_var = self.test_var)
+                                sal_type = self.sal_type, saliency_model=sal_model)
 
 
         if self.sal_type!= None and not self.sal_model:
@@ -149,9 +145,6 @@ class Trainer:
             )
             self.model.rpn = network
 
-            if self.sal_model == "Img_Signature":
-                self.imgsig = imgSigSal().to(self.device)
-
         print("Model setup complete.")
         self.model = self.model.to(self.device) # sending to GPU (cuda)
         print("Model device:", next(self.model.parameters()).device)
@@ -194,7 +187,7 @@ class Trainer:
 
             print('Mean train loss during epoch %d: %.6f, learning rate :' % (epoch, sum(train_stats) / len(train_stats)), lr)
             stats = self.evaluate()
-            dropout_rate = self.k #* (1-math.exp(-epoch / self.tau)) for exponential dropout
+            dropout_rate = self.k
             mAP = stats['mAP'] # collected data
             mAP50 = stats['mAP50']
             mAP75 = stats['mAP75']
@@ -327,37 +320,25 @@ class Trainer:
     def train_one_epoch(self, epoch):
         self.model.train() # set model to training mode
         loss_values = []
-        dropout_rate = self.k #* (1-math.exp(-epoch / self.tau))
+        dropout_rate = self.k
         self.model.rpn.head.k = dropout_rate
         self.model.rpn.anchor_generator.k = dropout_rate
 
         # loop through the training data batches
         
         if self.sal_type != None:
-            if self.sal_model != "Img_Signature":
-                for images, masks, targets in tqdm(self.data_loader_train):
-                    if images is None or targets is None:
-                        continue
-                    images = [img.to(self.device) for img in images]
-                    targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
-                    masks = [mask.to(self.device) for mask in masks]
-                    # train the model on the current batch
-                    loss_values.append(self.train_step_sal(images, masks, targets))
+            for images, masks, targets in tqdm(self.data_loader_train):
+                if images is None or targets is None:
+                    continue
+                images = [img.to(self.device) for img in images]
+                targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
+                masks = [mask.to(self.device) for mask in masks]
+                # train the model on the current batch
+                loss_values.append(self.train_step_sal(images, masks, targets))
 
                 # for opt in self.optimizers: opt.step()
                 if self.scheduler is not None:
                     self.scheduler.step()
-            else:
-                for images, targets in tqdm(self.data_loader_train):
-                    if images is None or targets is None:
-                        continue
-                    images = [img.to(self.device) for img in images]
-                    targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
-                    masks = []
-                    for img in images:
-                        mask_tensor = self.imgsig(img.unsqueeze(0))
-                        masks.append(mask_tensor.squeeze(0))
-                    loss_values.append(self.train_step_sal(images, masks, targets))
 
 
         
@@ -400,62 +381,31 @@ class Trainer:
         # loop through the validation data batches
 
         if self.sal_type != None:
-            if self.sal_model != "Img_Signature":
-                for images, masks, targets in tqdm(self.data_loader_val):
-                    images = [img.to(self.device) for img in images]
-                    targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
-                    masks = [mask.to(self.device) for mask in masks]
-                    # perform evaluation step
-                    mAP, mAP50, mAP75, mAPL, mAPM, mAPS, val_loss, loss_cls, loss_box, loss_obj, loss_rpn_box, mAR1, mAR10, mAR100, mARS, mARM, mARL = self.eval_step_sal(images, masks, targets)
+            for images, masks, targets in tqdm(self.data_loader_val):
+                images = [img.to(self.device) for img in images]
+                targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
+                masks = [mask.to(self.device) for mask in masks]
+                # perform evaluation step
+                mAP, mAP50, mAP75, mAPL, mAPM, mAPS, val_loss, loss_cls, loss_box, loss_obj, loss_rpn_box, mAR1, mAR10, mAR100, mARS, mARM, mARL = self.eval_step_sal(images, masks, targets)
 
-                    # new_stats is a tuple of (loss, accuracy), so we need stats to be a list of lists (one for each metric)
-                    stats['mAP'].append(mAP)
-                    stats['mAP50'].append(mAP50)
-                    stats['mAP75'].append(mAP75)
-                    stats['mAPL'].append(mAPL)
-                    stats['mAPM'].append(mAPM)
-                    stats['mAPS'].append(mAPS)
-                    stats['val_loss'].append(val_loss)
-                    stats['loss_cls'].append(loss_cls)
-                    stats['loss_box'].append(loss_box)
-                    stats['loss_obj'].append(loss_obj)
-                    stats['loss_rpn_box'].append(loss_rpn_box)
-                    stats['mAR_1'].append(mAR1)
-                    stats['mAR_10'].append(mAR10)
-                    stats['mAR_100'].append(mAR100)
-                    stats['mARS'].append(mARS)
-                    stats['mARM'].append(mARM)
-                    stats['mARL'].append(mARL)
-            else:
-                for images, targets in tqdm(self.data_loader_val):
-                    images = [img.to(self.device) for img in images]
-                    targets = [{k: v.to(self.device) for k, v in t.items()} for t in targets]
-                    masks = []
-                    for img in images:
-                        mask_tensor = self.imgsig(img.unsqueeze(0))
-                        masks.append(mask_tensor.squeeze(0))
-
-                    # perform evaluation step
-                    mAP, mAP50, mAP75, mAPL, mAPM, mAPS, val_loss, loss_cls, loss_box, loss_obj, loss_rpn_box, mAR1, mAR10, mAR100, mARS, mARM, mARL = self.eval_step_sal(images, masks, targets)
-
-                    # new_stats is a tuple of (loss, accuracy), so we need stats to be a list of lists (one for each metric)
-                    stats['mAP'].append(mAP)
-                    stats['mAP50'].append(mAP50)
-                    stats['mAP75'].append(mAP75)
-                    stats['mAPL'].append(mAPL)
-                    stats['mAPM'].append(mAPM)
-                    stats['mAPS'].append(mAPS)
-                    stats['val_loss'].append(val_loss)
-                    stats['loss_cls'].append(loss_cls)
-                    stats['loss_box'].append(loss_box)
-                    stats['loss_obj'].append(loss_obj)
-                    stats['loss_rpn_box'].append(loss_rpn_box)
-                    stats['mAR_1'].append(mAR1)
-                    stats['mAR_10'].append(mAR10)
-                    stats['mAR_100'].append(mAR100)
-                    stats['mARS'].append(mARS)
-                    stats['mARM'].append(mARM)
-                    stats['mARL'].append(mARL)
+                # new_stats is a tuple of (loss, accuracy), so we need stats to be a list of lists (one for each metric)
+                stats['mAP'].append(mAP)
+                stats['mAP50'].append(mAP50)
+                stats['mAP75'].append(mAP75)
+                stats['mAPL'].append(mAPL)
+                stats['mAPM'].append(mAPM)
+                stats['mAPS'].append(mAPS)
+                stats['val_loss'].append(val_loss)
+                stats['loss_cls'].append(loss_cls)
+                stats['loss_box'].append(loss_box)
+                stats['loss_obj'].append(loss_obj)
+                stats['loss_rpn_box'].append(loss_rpn_box)
+                stats['mAR_1'].append(mAR1)
+                stats['mAR_10'].append(mAR10)
+                stats['mAR_100'].append(mAR100)
+                stats['mARS'].append(mARS)
+                stats['mARM'].append(mARM)
+                stats['mARL'].append(mARL)
         else:
             for images, targets in tqdm(self.data_loader_val):
                 images = [img.to(self.device) for img in images]
@@ -539,11 +489,3 @@ class Trainer:
             loss_rpn_box = loss_dict['loss_rpn_box_reg']
 
         return results['map'].item(), results['map_50'].item(), results['map_75'].item(), results['map_large'].item(),results['map_medium'].item(), results['map_small'].item(), val_loss, loss_cls, loss_box, loss_obj, loss_rpn_box,results['mar_1'].item(), results['mar_10'].item(), results['mar_100'].item(), results['mar_small'].item(), results['mar_medium'].item(), results['mar_large'].item()
-
-
-
-    
-
-
-
-
