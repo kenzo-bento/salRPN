@@ -24,11 +24,8 @@ def run_experiment(dataset,
                    report_wandb=True,
                    save_model=False,
                    save_stats=False, 
-                   save_f_maps=False,
                    seed_val=42,
-                   k = 0.1,
-                   tau = 8,
-                   test_var=None):
+                   k = 0.1):
     
     # for reproducibility
     torch.manual_seed(seed_val)
@@ -65,14 +62,11 @@ def run_experiment(dataset,
         sal_type = sal_type,
         save_model=save_model,
         save_stats=save_stats,
-        save_f_maps=save_f_maps,
         nTrain=nTrain,
         nTest=nTest,
         learning_rate=learning_rate,
         k = k,
         seed = seed_val,
-        tau = tau,
-        test_var = test_var,
     )
 
     base_model = copy.deepcopy(trainer.model)
