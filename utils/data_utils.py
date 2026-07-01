@@ -39,14 +39,13 @@ def get_category_dict(config:Dict):
 class COCODataset(Dataset):
     def __init__(self, config : Dict, sal_type: str = 'batch',
                  sal_model_name: str = None, train: bool = True,
-                 transform=None, sal_transform=None, test_var=None):
+                 transform=None, sal_transform=None):
         """
         This module acceses, loades, and preprocesses images, annotations, and saliency maps for the COCO dataset.
         """
         self.sal_model_name = sal_model_name # name of the saliency model
 
         self.train = train # True if train set, False if validation set
-        self.test_var = test_var
 
         self.config = config.get('coco', {}) # accesses yaml file
         if self.train:
@@ -78,16 +77,15 @@ class COCODataset(Dataset):
         self.sal_data = None
 
         if self.sal_type != None: # checking for mask/batch/add logic
-            if self.sal_model_name != "Img_Signature":
             # checking for model name for saliency
-                if not sal_model_name:
-                    raise ValueError("`load_saliency` is True, but no `sal_model_name` was provided.")
+            if not sal_model_name:
+                raise ValueError("`load_saliency` is True, but no `sal_model_name` was provided.")
 
-                self.sal_data = []
-                base_sal_folder =  os.path.join(self.config['root'], "sal", sal_model_name) # configure the root to where the saliency models are
-                sal_files = "train_maps/" if self.train else "val_maps/"
+            self.sal_data = []
+            base_sal_folder =  os.path.join(self.config['root'], "sal", sal_model_name) # configure the root to where the saliency models are
+            sal_files = "train_maps/" if self.train else "val_maps/"
 
-                self.sal_dir= os.path.join(base_sal_folder, sal_files)
+            self.sal_dir= os.path.join(base_sal_folder, sal_files)
 
 
 
@@ -102,15 +100,6 @@ class COCODataset(Dataset):
         img_name = img_info["file_name"]
         img_path = os.path.join(self.img_dir, img_name)
         image = Image.open(img_path).convert('RGB')
-
-        if index < len(self.ids) - 1:
-            sal_img_id = self.ids[index+1]
-            sal_img_info = self.images[sal_img_id]
-            sal_img_name = sal_img_info["file_name"]
-        else:
-            sal_img_id = self.ids[(index+1) % len(self.ids)]
-            sal_img_info = self.images[sal_img_id]
-            sal_img_name = sal_img_info["file_name"]
 
 
         # load annotations
@@ -144,16 +133,10 @@ class COCODataset(Dataset):
 
         # load saliency map
         if self.sal_type != None:
-            if self.sal_model_name != "Img_Signature":
-                if self.test_var == "blob":
-                    name, ext = os.path.splitext(sal_img_name)
-                else:
-                    name, ext = os.path.splitext(img_name)
-                sal_name = os.path.join(self.sal_dir, f"{name}_{self.sal_model_name}{ext}")
-                sal_map = Image.open(sal_name).convert("L")
-                sal_tensor = transforms.ToTensor()(sal_map)
-            else:
-                return image, target
+            name, ext = os.path.splitext(img_name)
+            sal_name = os.path.join(self.sal_dir, f"{name}_{self.sal_model_name}{ext}")
+            sal_map = Image.open(sal_name).convert("L")
+            sal_tensor = transforms.ToTensor()(sal_map)
         else:
             return image, target
 
@@ -172,9 +155,7 @@ class COCODataset(Dataset):
             sal_tensor = sal_tensor.expand(3, -1, -1)
             image = image * sal_tensor
         elif self.sal_type == 'mask': # saliency map localization (Official)
-            if self.sal_model_name != "Img_Signature":
-                return image, sal_tensor, target
-            return image, target
+            return image, sal_tensor, target
         return image, target
 
 # functionally similar to COCODataset
@@ -207,18 +188,17 @@ class VOCDataset(Dataset):
         self.sal_data = None
 
         if self.sal_type != None:
-            if self.sal_model_name != "Img_Signature":
-                if not sal_model_name:
-                    raise ValueError("`load_saliency` is True, but no `sal_model_name` was provided.")
+            if not sal_model_name:
+                raise ValueError("`load_saliency` is True, but no `sal_model_name` was provided.")
 
-                self.sal_data = []
-                if self.train:
-                    base_sal_folder =  os.path.join(self.config['root'], "VOC2012_train_val", "sal", sal_model_name)
-                else:
-                    base_sal_folder = os.path.join(self.config['root'], "VOC2012_test", "sal", sal_model_name)
-                sal_files = "train_maps/" if self.train else "val_maps/"
+            self.sal_data = []
+            if self.train:
+                base_sal_folder =  os.path.join(self.config['root'], "VOC2012_train_val", "sal", sal_model_name)
+            else:
+                base_sal_folder = os.path.join(self.config['root'], "VOC2012_test", "sal", sal_model_name)
+            sal_files = "train_maps/" if self.train else "val_maps/"
 
-                self.sal_dir= os.path.join(base_sal_folder, sal_files)
+            self.sal_dir= os.path.join(base_sal_folder, sal_files)
     
         self.class_to_id = {
         "person": 1,
@@ -277,33 +257,29 @@ class VOCDataset(Dataset):
             image = self.transform(image)
 
         if self.sal_type != None:
-            if self.sal_model_name != "Img_Signature":
-                sal_name = os.path.join(self.sal_dir, f"{img_id}_{self.sal_model_name}.jpg")
-                sal_map = Image.open(sal_name).convert("L")
-                sal_tensor = transforms.ToTensor()(sal_map)
-            else:
-                return image, target
+            sal_name = os.path.join(self.sal_dir, f"{img_id}_{self.sal_model_name}.jpg")
+            sal_map = Image.open(sal_name).convert("L")
+            sal_tensor = transforms.ToTensor()(sal_map)
         else:
             return image, target
 
-        if self.sal_model_name != "Img_Signature":
-            if self.sal_type == 'batch':
-                x = torch.cat([image, sal_tensor], dim=0)
-                return x, target
-            elif self.sal_type == 'noise':
-                sal_tensor = torch.randn(1, image.shape[1], image.shape[2])
-                x = torch.cat([image, sal_tensor], dim = 0)
-                return x, target
-            
-            if self.sal_type == 'add':
-                sal_tensor = sal_tensor.expand(3, -1, -1)
-                image = image + sal_tensor
-            elif self.sal_type == 'multiply':
-                sal_tensor = sal_tensor.expand(3, -1, -1)
-                image = image * sal_tensor
-            elif self.sal_type == 'mask':
-                return image, sal_tensor, target
-            return image,target
+        if self.sal_type == 'batch':
+            x = torch.cat([image, sal_tensor], dim=0)
+            return x, target
+        elif self.sal_type == 'noise':
+            sal_tensor = torch.randn(1, image.shape[1], image.shape[2])
+            x = torch.cat([image, sal_tensor], dim = 0)
+            return x, target
+        
+        if self.sal_type == 'add':
+            sal_tensor = sal_tensor.expand(3, -1, -1)
+            image = image + sal_tensor
+        elif self.sal_type == 'multiply':
+            sal_tensor = sal_tensor.expand(3, -1, -1)
+            image = image * sal_tensor
+        elif self.sal_type == 'mask':
+            return image, sal_tensor, target
+        return image,target
 
     def parse_voc_xml(self, xml_path):
         # loading annotations
@@ -334,10 +310,9 @@ class DataModule:
     A general module to prepare datasets, collate the batches, and forward to the model for processing.
     """
     def __init__(self, dataset_name: str, config: Dict, num_train: int, num_test: int, batch_size: int,
-                 num_workers: int, sal_type: str = 'batch', saliency_model: str = None, test_var: str = None):
+                 num_workers: int, sal_type: str = 'batch', saliency_model: str = None):
         
         self.dataset_name = dataset_name
-        self.test_var = test_var
         self.config = config
         self.num_train = num_train
         self.num_test = num_test
@@ -356,12 +331,8 @@ class DataModule:
             return None, None
 
         if self.sal_type == 'mask':
-            if self.saliency_model != "Img_Signature":
-                images, masks, targets = zip(*batch)
-                return list(images), masks, list(targets)
-            else:
-                images, targets = zip(*batch)
-                return list(images), list(targets)
+            images, masks, targets = zip(*batch)
+            return list(images), masks, list(targets)
         else:
             images, targets = zip(*batch)
             return list(images), list(targets)
@@ -494,7 +465,6 @@ class DataModule:
             'sal_model_name': self.saliency_model,  # pass the model name (can be None)
             'transform': self.train_transforms,
             'sal_transform': self.saliency_transforms,
-            'test_var': self.test_var,
             }
         test_args = {
             'config' : self.config,
@@ -503,7 +473,6 @@ class DataModule:
             'sal_model_name': self.saliency_model,
             'transform': self.test_transforms,
             'sal_transform': self.saliency_transforms,
-            'test_var': self.test_var,
             }
 
         dataset_train = dataset_class(**train_args)
