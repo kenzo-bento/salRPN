@@ -21,7 +21,8 @@ conda activate /path/to/conda_environment
 export WANDB_MODE=online
 
 # Run Python script
-python /scratch4/retienn1/salRPN/main_command_line_inputs.py \
+cd . # configure if not in working directory
+python ./main_command_line_inputs.py \
     --sal_type 'mask' \
     --sal_method 'hard_sal' \
     --wandb_name 'hardSal' \
