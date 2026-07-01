@@ -29,7 +29,6 @@ def main_training_function():
                     report_wandb=True,
                     save_model=True,
                     save_stats=True,
-                    save_f_maps=False,
                     seed_val=42,
                     k = 0.1)
     pass
