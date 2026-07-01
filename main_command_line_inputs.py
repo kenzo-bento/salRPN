@@ -18,10 +18,10 @@ def main():
     parser = argparse.ArgumentParser(description='Run a training experiment.')
     parser.add_argument('--dataset', type=str, default='coco', help='Dataset to use')
     parser.add_argument('--sal_model', type=str, default='ProtoObject', help='Saliency model')
-    parser.add_argument('--sal_type', type=str, default=None, help='Way of using saliency')
-    parser.add_argument('--sal_method', type=str, default='maxima', help='Way of filtering')
+    parser.add_argument('--sal_type', type=str, default='mask', help='Way of using saliency')
+    parser.add_argument('--sal_method', type=str, default='hard_sal', help='Way of filtering')
     parser.add_argument('--model_name', type=str, default='resnet', help='Model architecture')
-    parser.add_argument('--wandb_name', type=str, default='Maxima', help='Logging name')
+    parser.add_argument('--wandb_name', type=str, default='HardSal', help='Logging name')
     parser.add_argument('--run_outputs_path', type=str, default='./run_outputs/', help='Path to save outputs')
     parser.add_argument('--optimizer_name', type=str, default='SGD', help='Optimizer to use')
     parser.add_argument('--scheduler_name', type=str, default=None, help='Learning rate scheduler')
@@ -36,9 +36,7 @@ def main():
     parser.add_argument('--save_stats', action='store_true', default=True, help='Save training statistics')
     parser.add_argument('--save_f_maps', action='store_true', help='Save feature maps')
     parser.add_argument('--seed_val', type=int, default=42, help='Random seed')
-    parser.add_argument('--tau', type=int, default=4, help='time constant')
     parser.add_argument('--dropout', type = float, default = 0.5, help = 'dropout rate')
-    parser.add_argument('--test_var', type = str, default=None, help = 'testing')
 
     args = parser.parse_args()
     
@@ -67,8 +65,7 @@ def main():
                     save_stats=args.save_stats,
                     save_f_maps=args.save_f_maps,
                     seed_val=args.seed_val,
-                    k = args.dropout,
-                    tau = args.tau)
+                    k = args.dropout)
 if __name__ == '__main__':
     multiprocessing.set_start_method("spawn", force=True)
     main()
