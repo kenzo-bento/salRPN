@@ -13,10 +13,10 @@ def main_training_function():
     # Run one experiment with saliency-informed hard dropout
     train_stats = run_experiment(dataset='coco',
                     sal_model='ProtoObject',
-                    sal_type = None,
+                    sal_type = 'mask',
                     sal_method = 'soft_sal',
                     model_name='resnet',
-                    wandb_name = 'Normal',
+                    wandb_name = 'SoftSal',
                     run_outputs_path='./run_outputs/',
                     optimizer_name='SGD', # 'SGD', 'Adam'
                     scheduler_name= None,  # 'ExponentialLR', 'StepLR', or None
@@ -31,8 +31,7 @@ def main_training_function():
                     save_stats=True,
                     save_f_maps=False,
                     seed_val=42,
-                    k = 0.1,
-                    tau = 4)
+                    k = 0.1)
     pass
 
 if __name__ == '__main__':
